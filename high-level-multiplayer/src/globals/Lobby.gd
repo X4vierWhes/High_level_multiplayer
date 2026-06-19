@@ -8,11 +8,18 @@ const PORT = 7000
 const DEFAULT_SERVER_IP = "127.0.0.1"
 const MAX_CONNECTIONS = 20
 
+const KEY_MANAGER_SERVICE_URL:String = "http://localhost:8080/keymanager"
+var key_pair:CryptoKey
+
 var players = {}
 var temporary_name: String = "Name"
 var players_loaded = 0
 
+var http:HTTPRequest
+
 func _ready():
+	http = HTTPRequest.new()
+	add_child(http)
 	multiplayer.peer_connected.connect(_on_player_connected)
 	multiplayer.peer_disconnected.connect(_on_player_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected_ok)
@@ -26,6 +33,29 @@ func create_game_with_name(host_name: String):
 		return error
 	multiplayer.multiplayer_peer = peer
 	players[1] = {"name": host_name}
+	
+	var crypto := Crypto.new()
+	key_pair = crypto.generate_rsa(2048)
+	
+	http.request(
+		KEY_MANAGER_SERVICE_URL + "/key", 
+		["content-Type: application/json"], 
+		HTTPClient.METHOD_POST, 
+		JSON.stringify({"userId": "SERVIDOR", "publicKey": key_pair.save_to_string(true)})
+	)
+	
+	var responseFunction = func(
+			_result: int, 
+			response_code: int, 
+			_headers: PackedStringArray, 
+			_body: PackedByteArray):
+				if response_code == 200: print("chave pública guardada no servidor de chaves")
+
+	
+	http.request_completed.connect(responseFunction)
+	await http.request_completed
+	http.request_completed.disconnect(responseFunction)
+	
 	print("Servidor criado por: ", host_name)
 
 func join_game(address = ""):
@@ -35,6 +65,28 @@ func join_game(address = ""):
 	var error = peer.create_client(address, PORT)
 	if error:
 		return error
+	
+	var crypto := Crypto.new()
+	key_pair = crypto.generate_rsa(2048)
+	
+	http.request(
+		KEY_MANAGER_SERVICE_URL + "/key", 
+		["content-Type: application/json"], 
+		HTTPClient.METHOD_POST, 
+		JSON.stringify({"userId": temporary_name, "publicKey": key_pair.save_to_string(true)})
+	)
+	
+	var responseFunction:Callable = func(
+			_result: int, 
+			response_code: int, 
+			_headers: PackedStringArray, 
+			body: PackedByteArray):
+				if (response_code == 200): print('chave pública enviada para servidor de gerenciamento de chaves')
+				
+	http.request_completed.connect(responseFunction)
+	await http.request_completed
+	http.request_completed.disconnect(responseFunction)
+	
 	multiplayer.multiplayer_peer = peer
 
 func remove_multiplayer_peer():

@@ -1,6 +1,7 @@
 extends Control
 
 @export var ip_input: LineEdit
+@onready var ip_input: LineEdit = $BoxContainer/VBoxContainer/LineEdit
 @onready var init: Button = $BoxContainer/VBoxContainer/init
 @onready var join: Button = $BoxContainer/VBoxContainer/join
 @onready var host: Button = $BoxContainer/VBoxContainer/host
@@ -15,7 +16,7 @@ func _on_host_pressed() -> void:
 	join.disabled = true
 	var username = ip_input.text if ip_input and not ip_input.text.is_empty() else "Host_Anonymous"
 	
-	var err = Lobby.create_game_with_name(username)
+	var err = await Lobby.create_game_with_name(username)
 	if err:
 		print("Erro ao criar servidor: ", err)
 		host.disabled = false
@@ -32,7 +33,7 @@ func _on_join_pressed() -> void:
 	
 	Lobby.temporary_name = username
 	
-	var err = Lobby.join_game(ip)
+	var err = await Lobby.join_game(ip)
 	if err:
 		print("Erro ao conectar: ", err)
 		host.disabled = false
@@ -43,3 +44,4 @@ func _on_join_pressed() -> void:
 func _on_init_pressed() -> void:
 	print("Host clicou para iniciar! Mudando a cena de todos os jogadores...")
 	Lobby.load_game.rpc("res://src/Game.tscn")
+	Lobby.call_load_game()
