@@ -9,9 +9,7 @@ const DEFAULT_SERVER_IP = "127.0.0.1"
 const MAX_CONNECTIONS = 20
 
 var players = {}
-
-var player_info = {"name": "Name"}
-
+var temporary_name: String = "Name"
 var players_loaded = 0
 
 func _ready():
@@ -21,6 +19,14 @@ func _ready():
 	multiplayer.connection_failed.connect(_on_connected_fail)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
+func create_game_with_name(host_name: String):
+	var peer = ENetMultiplayerPeer.new()
+	var error = peer.create_server(PORT, MAX_CONNECTIONS)
+	if error:
+		return error
+	multiplayer.multiplayer_peer = peer
+	players[1] = {"name": host_name}
+	print("Servidor criado por: ", host_name)
 
 func join_game(address = ""):
 	if address.is_empty():
@@ -30,18 +36,6 @@ func join_game(address = ""):
 	if error:
 		return error
 	multiplayer.multiplayer_peer = peer
-
-
-func create_game():
-	var peer = ENetMultiplayerPeer.new()
-	var error = peer.create_server(PORT, MAX_CONNECTIONS)
-	if error:
-		return error
-	multiplayer.multiplayer_peer = peer
-
-	players[1] = player_info
-	player_connected.emit(1, player_info)
-
 
 func remove_multiplayer_peer():
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -60,22 +54,33 @@ func player_loaded():
 			players_loaded = 0
 
 func _on_player_connected(id):
-	_register_player.rpc_id(id, player_info)
+	if multiplayer.is_server():
+		# Passa o ID 1 e o nome do Host (String)
+		_register_player.rpc_id(id, 1, players[1]["name"])
 
+func _on_connected_ok():
+	var meu_id = multiplayer.get_unique_id()
+	# Passa o ID próprio e o nome temporário (String) corrigido aqui
+	_register_player.rpc_id(1, meu_id, temporary_name)
+
+# Corrigido aqui: a função agora aceita String para o nome do jogador
 @rpc("any_peer", "reliable")
-func _register_player(new_player_info):
-	var new_player_id = multiplayer.get_remote_sender_id()
-	players[new_player_id] = new_player_info
-	player_connected.emit(new_player_id, new_player_info)
+func _register_player(id_do_jogador: int, nome_do_jogador: String):
+	# Monta o dicionário de forma isolada na memória de quem recebe
+	players[id_do_jogador] = {"name": nome_do_jogador}
+	print("--- Registro de Rede --- ID: ", id_do_jogador, " | Nome: ", nome_do_jogador)
+	player_connected.emit(id_do_jogador, players[id_do_jogador])
+	
+	if multiplayer.is_server():
+		for id_conectado in players:
+			if id_conectado != 1 and id_conectado != id_do_jogador:
+				# Atualiza os outros clientes cruzando as informações
+				_register_player.rpc_id(id_conectado, id_do_jogador, nome_do_jogador)
+				_register_player.rpc_id(id_do_jogador, id_conectado, players[id_conectado]["name"])
 
 func _on_player_disconnected(id):
 	players.erase(id)
 	player_disconnected.emit(id)
-
-func _on_connected_ok():
-	var peer_id = multiplayer.get_unique_id()
-	players[peer_id] = player_info
-	player_connected.emit(peer_id, player_info)
 
 func _on_connected_fail():
 	remove_multiplayer_peer()

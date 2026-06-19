@@ -2,5 +2,87 @@
 
 [ext_resource type="Script" uid="uid://bqsocs7vtiury" path="res://src/game.gd" id="1_2c5w0"]
 
-[node name="Game" type="Node2D" unique_id=1966382579]
+[node name="Game" type="Node2D" unique_id=1966382579 node_paths=PackedStringArray("username_label")]
 script = ExtResource("1_2c5w0")
+username_label = NodePath("CanvasLayer/Control/Control/username")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=22733251]
+
+[node name="Control" type="Control" parent="CanvasLayer" unique_id=673611172]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="background_color" type="ColorRect" parent="CanvasLayer/Control" unique_id=1782213210]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.003921569, 0.003921569, 1, 1)
+
+[node name="Control" type="Control" parent="CanvasLayer/Control" unique_id=727259646]
+layout_mode = 1
+anchors_preset = 13
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -325.0
+offset_top = 85.0
+offset_right = 338.0
+offset_bottom = -106.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="chat_background_color" type="ColorRect" parent="CanvasLayer/Control/Control" unique_id=292179332]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="msg" type="LineEdit" parent="CanvasLayer/Control/Control" unique_id=2089936376]
+layout_mode = 0
+offset_left = -5.0
+offset_top = 461.0
+offset_right = 665.0
+offset_bottom = 492.0
+placeholder_text = "Mensagem"
+
+[node name="send_button" type="Button" parent="CanvasLayer/Control/Control" unique_id=1035060608]
+custom_minimum_size = Vector2(100, 50)
+custom_maximum_size = Vector2(150, 100)
+layout_mode = 0
+offset_left = 566.0
+offset_top = 495.0
+offset_right = 666.0
+offset_bottom = 545.0
+text = "Send"
+
+[node name="username" type="RichTextLabel" parent="CanvasLayer/Control/Control" unique_id=1724212110]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 0
+offset_left = -9.0
+offset_top = 496.0
+offset_right = 191.0
+offset_bottom = 546.0
+bbcode_enabled = true
+text = "[wave connected=0] {username} [/wave]"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="msgs" type="TextEdit" parent="CanvasLayer/Control/Control" unique_id=1717870522]
+layout_mode = 0
+offset_left = -7.0
+offset_top = 8.0
+offset_right = 668.0
+offset_bottom = 458.0
+editable = false
+
+[connection signal="pressed" from="CanvasLayer/Control/Control/send_button" to="." method="_on_send_button_pressed"]
