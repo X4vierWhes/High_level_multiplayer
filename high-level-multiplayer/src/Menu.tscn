@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://du0l2238g3i7j"]
+
+[ext_resource type="Script" uid="uid://c1prismfijt7k" path="res://src/menu.gd" id="1_b4hyn"]
+
+[node name="Menu" type="Control" unique_id=438255624 node_paths=PackedStringArray("ip_input")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_b4hyn")
+ip_input = NodePath("BoxContainer/VBoxContainer/LineEdit")
+
+[node name="BoxContainer" type="BoxContainer" parent="." unique_id=784440121]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -37.5
+offset_top = -37.5
+offset_right = 37.5
+offset_bottom = 37.5
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1, 1.24)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="BoxContainer" unique_id=1106231370]
+layout_mode = 2
+
+[node name="LineEdit" type="LineEdit" parent="BoxContainer/VBoxContainer" unique_id=1547293120]
+layout_mode = 2
+placeholder_text = "Adress"
+
+[node name="host" type="Button" parent="BoxContainer/VBoxContainer" unique_id=1878445773]
+custom_minimum_size = Vector2(75, 75)
+custom_maximum_size = Vector2(200, 200)
+layout_mode = 2
+text = "HOST"
+
+[node name="join" type="Button" parent="BoxContainer/VBoxContainer" unique_id=963244830]
+custom_minimum_size = Vector2(75, 75)
+custom_maximum_size = Vector2(200, 200)
+layout_mode = 2
+text = "JOIN"
+
+[node name="init" type="Button" parent="BoxContainer/VBoxContainer" unique_id=1295064896]
+layout_mode = 2
+text = "iniciar jogo"
+
+[connection signal="pressed" from="BoxContainer/VBoxContainer/host" to="." method="_on_host_pressed"]
+[connection signal="pressed" from="BoxContainer/VBoxContainer/join" to="." method="_on_join_pressed"]
+[connection signal="pressed" from="BoxContainer/VBoxContainer/init" to="." method="_on_init_pressed"]
