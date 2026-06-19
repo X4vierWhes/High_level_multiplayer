@@ -11,6 +11,8 @@ const MAX_CONNECTIONS = 20
 const KEY_MANAGER_SERVICE_URL:String = "http://localhost:8080/keymanager"
 var key_pair:CryptoKey
 
+var target_keypair:Array[CryptoKey]
+
 var players = {}
 var temporary_name: String = "Name"
 var players_loaded = 0
@@ -92,6 +94,23 @@ func join_game(address = ""):
 func remove_multiplayer_peer():
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	players.clear()
+
+func call_load_game():
+	http.request(KEY_MANAGER_SERVICE_URL+"/key/SERVIDOR")
+	
+	var responseFunction:Callable = func(_result, response_code, _headers, body):
+		print(response_code)
+		var bodyString :String= body.get_string_from_utf8()
+		var json = JSON.parse_string(bodyString)
+		var new_key = CryptoKey.new()
+		# new_key.generate_from_string(json["publickey"])
+		# crypto.validate(json["certificate"])
+		target_keypair.append(new_key)
+	
+	http.request_completed.connect(responseFunction)
+	await http.request_completed
+	
+	Lobby.load_game.rpc("res://src/Game.tscn")
 
 @rpc("call_local", "reliable")
 func load_game(game_scene_path):
