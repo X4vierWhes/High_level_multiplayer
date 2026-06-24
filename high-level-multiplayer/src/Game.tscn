@@ -2,9 +2,8 @@
 
 [ext_resource type="Script" uid="uid://bqsocs7vtiury" path="res://src/game.gd" id="1_2c5w0"]
 
-[node name="Game" type="Node2D" unique_id=1966382579 node_paths=PackedStringArray("username_label")]
+[node name="Game" type="Node2D" unique_id=1966382579]
 script = ExtResource("1_2c5w0")
-username_label = NodePath("CanvasLayer/Control/Control/username")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=22733251]
 
@@ -47,7 +46,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 1)
 
-[node name="msg" type="LineEdit" parent="CanvasLayer/Control/Control" unique_id=2089936376]
+[node name="nova_msg" type="LineEdit" parent="CanvasLayer/Control/Control" unique_id=2089936376]
 layout_mode = 0
 offset_left = -5.0
 offset_top = 461.0

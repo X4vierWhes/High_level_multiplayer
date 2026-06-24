@@ -10,8 +10,7 @@ const MAX_CONNECTIONS = 20
 
 const KEY_MANAGER_SERVICE_URL:String = "http://localhost:8080/keymanager"
 var key_pair:CryptoKey
-
-var target_keypair:Array[CryptoKey]
+var authority_key:CryptoKey
 
 var players = {}
 var temporary_name: String = "Name"
@@ -34,10 +33,10 @@ func create_game_with_name(host_name: String):
 	if error:
 		return error
 	multiplayer.multiplayer_peer = peer
-	players[1] = {"name": host_name}
 	
 	var crypto := Crypto.new()
 	key_pair = crypto.generate_rsa(2048)
+	players[1] = {"name": host_name, "key": key_pair}
 	
 	http.request(
 		KEY_MANAGER_SERVICE_URL + "/key", 
@@ -45,37 +44,36 @@ func create_game_with_name(host_name: String):
 		HTTPClient.METHOD_POST, 
 		JSON.stringify({"userId": "SERVIDOR", "publicKey": key_pair.save_to_string(true)})
 	)
-	
 	var responseFunction = func(
 			_result: int, 
-			response_code: int, 
+			_response_code: int, 
 			_headers: PackedStringArray, 
-			_body: PackedByteArray):
-				if response_code == 200: print("chave pública guardada no servidor de chaves")
-
+			body: PackedByteArray):
+				print("chave pública guardada no servidor de chaves")
+				authority_key = CryptoKey.new()
+				var json:Dictionary = JSON.parse_string(body.get_string_from_utf8())
+				authority_key.load_from_string(json["authorityPublicKey"], true)
 	
 	http.request_completed.connect(responseFunction)
 	await http.request_completed
 	http.request_completed.disconnect(responseFunction)
-	
-	print("Servidor criado por: ", host_name)
 
-func join_game(address = ""):
-	if address.is_empty():
-		address = DEFAULT_SERVER_IP
+func join_game(client_name:String):
+	temporary_name = client_name
 	var peer = ENetMultiplayerPeer.new()
-	var error = peer.create_client(address, PORT)
+	var error = peer.create_client(DEFAULT_SERVER_IP, PORT)
 	if error:
 		return error
 	
 	var crypto := Crypto.new()
 	key_pair = crypto.generate_rsa(2048)
+	multiplayer.multiplayer_peer = peer
 	
 	http.request(
 		KEY_MANAGER_SERVICE_URL + "/key", 
 		["content-Type: application/json"], 
 		HTTPClient.METHOD_POST, 
-		JSON.stringify({"userId": temporary_name, "publicKey": key_pair.save_to_string(true)})
+		JSON.stringify({"userId": multiplayer.get_unique_id(), "publicKey": key_pair.save_to_string(true)})
 	)
 	
 	var responseFunction:Callable = func(
@@ -83,71 +81,67 @@ func join_game(address = ""):
 			response_code: int, 
 			_headers: PackedStringArray, 
 			body: PackedByteArray):
-				if (response_code == 200): print('chave pública enviada para servidor de gerenciamento de chaves')
+				if (response_code == 200): 
+					authority_key = CryptoKey.new()
+					var json:Dictionary = JSON.parse_string(body.get_string_from_utf8())
+					authority_key.load_from_string(json["authorityPublicKey"], true)
 				
 	http.request_completed.connect(responseFunction)
 	await http.request_completed
 	http.request_completed.disconnect(responseFunction)
-	
-	multiplayer.multiplayer_peer = peer
 
 func remove_multiplayer_peer():
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	players.clear()
 
-func call_load_game():
-	http.request(KEY_MANAGER_SERVICE_URL+"/key/SERVIDOR")
+@rpc("authority", "call_local", "reliable")
+func load_game(game_scene_path):
+	if multiplayer.is_server():
+		for i in multiplayer.get_peers():
+			http.request(KEY_MANAGER_SERVICE_URL+"/key/" + str(i))
+	else: http.request(KEY_MANAGER_SERVICE_URL+"/key/SERVIDOR")
 	
-	var responseFunction:Callable = func(_result, response_code, _headers, body):
-		print(response_code)
-		var bodyString :String= body.get_string_from_utf8()
-		var json = JSON.parse_string(bodyString)
-		var new_key = CryptoKey.new()
-		# new_key.generate_from_string(json["publickey"])
-		# crypto.validate(json["certificate"])
-		target_keypair.append(new_key)
+	var responseFunction:Callable = func(_result, _response_code, _headers, body):
+		var crypto := Crypto.new()
+		var json = JSON.parse_string(body.get_string_from_utf8())
+		var new_key := CryptoKey.new()
+		new_key.load_from_string(json["publicKey"], true)
+		crypto.verify(
+			HashingContext.HASH_SHA256, 
+			json["publicKey"].sha256_buffer(),
+			json["signature"].sha256_buffer(), 
+			authority_key) # ESTA FUNÇÃO CRIARÁ UMA EXCESSÃO CASO NÃO SEJA VÁLIDO
+		players[(json["userId"] as int) if json["userId"] != "SERVIDOR" else 1]["key"] = new_key
 	
 	http.request_completed.connect(responseFunction)
 	await http.request_completed
+	http.request_completed.disconnect(responseFunction)
 	
-	Lobby.load_game.rpc("res://src/Game.tscn")
-
-@rpc("call_local", "reliable")
-func load_game(game_scene_path):
 	get_tree().change_scene_to_file(game_scene_path)
-
-@rpc("any_peer", "call_local", "reliable")
-func player_loaded():
-	if multiplayer.is_server():
-		players_loaded += 1
-		if players_loaded == players.size():
-			$/root/Game.start_game()
-			players_loaded = 0
 
 func _on_player_connected(id):
 	if multiplayer.is_server():
-		# Passa o ID 1 e o nome do Host (String)
 		_register_player.rpc_id(id, 1, players[1]["name"])
 
 func _on_connected_ok():
-	var meu_id = multiplayer.get_unique_id()
 	# Passa o ID próprio e o nome temporário (String) corrigido aqui
-	_register_player.rpc_id(1, meu_id, temporary_name)
+	players[multiplayer.get_unique_id()] = {"name": temporary_name, "key": key_pair}
+	_register_player.rpc_id(1,multiplayer.get_unique_id(), temporary_name)
 
 # Corrigido aqui: a função agora aceita String para o nome do jogador
 @rpc("any_peer", "reliable")
-func _register_player(id_do_jogador: int, nome_do_jogador: String):
+func _register_player(id_do_jogador: int, nome_do_jogador:String):
 	# Monta o dicionário de forma isolada na memória de quem recebe
 	players[id_do_jogador] = {"name": nome_do_jogador}
 	print("--- Registro de Rede --- ID: ", id_do_jogador, " | Nome: ", nome_do_jogador)
 	player_connected.emit(id_do_jogador, players[id_do_jogador])
 	
-	if multiplayer.is_server():
-		for id_conectado in players:
-			if id_conectado != 1 and id_conectado != id_do_jogador:
-				# Atualiza os outros clientes cruzando as informações
-				_register_player.rpc_id(id_conectado, id_do_jogador, nome_do_jogador)
-				_register_player.rpc_id(id_do_jogador, id_conectado, players[id_conectado]["name"])
+	#if multiplayer.is_server():
+		#for id_conectado in players:
+			#if id_conectado != 1 and id_conectado != payload["id_do_jogador"]:
+				## Atualiza os outros clientes cruzando as informações
+				#_register_player.rpc_id(id_conectado, payload["id_do_jogador"], payload["nome_do_jogador"])
+				#_register_player.rpc_id(payload["id_do_jogador"], id_conectado, players[id_conectado]["name"])
 
 func _on_player_disconnected(id):
 	players.erase(id)

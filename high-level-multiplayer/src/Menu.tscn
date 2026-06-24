@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c1prismfijt7k" path="res://src/menu.gd" id="1_b4hyn"]
 
-[node name="Menu" type="Control" unique_id=438255624 node_paths=PackedStringArray("ip_input")]
+[node name="Menu" type="Control" unique_id=438255624]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -10,7 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_b4hyn")
-ip_input = NodePath("BoxContainer/VBoxContainer/LineEdit")
 
 [node name="BoxContainer" type="BoxContainer" parent="." unique_id=784440121]
 layout_mode = 1

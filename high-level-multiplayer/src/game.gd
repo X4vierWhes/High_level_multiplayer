@@ -1,29 +1,29 @@
 extends Node2D
 
-@export var username_label: RichTextLabel
+@onready var username_label: RichTextLabel = $CanvasLayer/Control/Control/username
 @onready var msgs: TextEdit = $CanvasLayer/Control/Control/msgs
-@onready var msg: LineEdit = $CanvasLayer/Control/Control/msg
+@onready var nova_msg: LineEdit = $CanvasLayer/Control/Control/nova_msg
 func _ready() -> void:
 	print("Carregou a cena localmente. Notificando lobby...")
-	Lobby.player_loaded.rpc()
+	username_label.text = "[wave connected=0] {username} [/wave]".format({"username": Lobby.players[multiplayer.get_unique_id()]["name"]})
 
-func start_game() -> void:
-	print("Start - Todos os jogadores estão sincronizados!")
-	atualizar_interface_local()
-
-func atualizar_interface_local() -> void:
-	var meu_id = multiplayer.get_unique_id()
-	
-	if meu_id == 1:
-		if 1 in Lobby.players:
-			username_label.text = "Jogador Atual: " + Lobby.players[1]["name"]
-	else:
-		username_label.text = "Jogador Atual: " + Lobby.temporary_name
 
 func _on_send_button_pressed() -> void:
-	rpc("msg_rpc", username_label.text, msg.text)
-	msg.text = ""
+	var crypto := Crypto.new()
+	var payload:String = "{\"username\": \"%s\", \"msg\": \"%s\" }" % [Lobby.players[multiplayer.get_unique_id()]["name"], nova_msg.text]
+	for i in multiplayer.get_peers():
+		print('mensagem enviada a %s' % i)
+		var encrypted = crypto.encrypt(Lobby.players[i]["key"], payload.to_utf8_buffer())
+		rpc_id(i, "msg_rpc", encrypted)
+	append_message(Lobby.players[multiplayer.get_unique_id()]["name"], nova_msg.text)
+	nova_msg.text = ""
 
-@rpc("any_peer", "call_local")
-func msg_rpc(username: String, msg: String) -> void:
-	msgs.text += str( username + " -> " + msg + "\n")
+@rpc("any_peer")
+func msg_rpc(data: PackedByteArray) -> void:
+	var crypto:=Crypto.new()
+	var decrypted:String = crypto.decrypt(Lobby.key_pair, data).get_string_from_utf8()
+	var payload:Dictionary = JSON.parse_string(decrypted)
+	append_message(payload["username"], payload["msg"])
+
+func append_message(username:String, msg:String) -> void:
+	msgs.text += str(username + " -> " + msg + "\n")
