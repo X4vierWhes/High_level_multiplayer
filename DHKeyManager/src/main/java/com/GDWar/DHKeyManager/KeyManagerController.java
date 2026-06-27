@@ -19,11 +19,13 @@ public class KeyManagerController {
 
     @GetMapping()
     public String teste(){
+        System.out.println("hello world!");
         return "Hello World!";
     }
 
     @GetMapping("/publickey")
     public String getPublicKey() {
+        System.out.println("Pedido de chave pública por usuario");
         return cryptoService.getPublicKey().toString();
     }
 
@@ -31,16 +33,20 @@ public class KeyManagerController {
     public ResponseEntity<String> getKey(@PathVariable String userId) {
         String key = keyManagerService.getKey(userId);
         if (key == null) {
+            System.out.println("Chave não encontrada para userId: " + userId);
             return ResponseEntity.notFound().build();
         }
         String signature = cryptoService.signPublicKey(key);
-        String jsonResponse = String.format("{\"userId: \"%s\", \"publicKey\": \"%s\", \"signature\": \"%s\"}", userId, key, signature);
+        String jsonResponse = String.format("{\"userId\": \"%s\", \"publicKey\": \"%s\", \"signature\": \"%s\"}", userId, key, signature);
+        System.out.println("Chave encontrada para userId: " + userId + ", publicKey: " + key + ", signature: " + signature);
         return ResponseEntity.ok(jsonResponse);
     }
 
     @PostMapping("/key")
-    public HttpStatus registerKey(@RequestBody HashMap<String, String> request) {
-        System.out.println("Registering key for userId: " + request.get("userId") + ", publicKey: " + request.get("publicKey"));
-        return keyManagerService.registerKey(request.get("userId"), request.get("publicKey")) ? HttpStatus.CREATED : HttpStatus.CONFLICT;
+    public ResponseEntity<String> registerKey(@RequestBody HashMap<String, String> request) {
+        keyManagerService.registerKey(request.get("userId"), request.get("publicKey"));
+        String systemPublicKey = cryptoService.getPublicKey();
+        System.out.println(systemPublicKey);
+        return  ResponseEntity.ok(String.format("{\"authorityPublicKey\": \"%s\"}", systemPublicKey));
     }
 }
